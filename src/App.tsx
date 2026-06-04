@@ -8,6 +8,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Historico from './pages/Historico'
 import Conta from './pages/Conta'
+import Admin from './pages/Admin'
 import Sidebar from './components/Sidebar'
 
 function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/admin" element={<Admin />} />
         <Route path="/dashboard" element={<ProtectedLayout><Dashboard /></ProtectedLayout>} />
         <Route path="/historico" element={<ProtectedLayout><Historico /></ProtectedLayout>} />
         <Route path="/conta" element={<ProtectedLayout><Conta /></ProtectedLayout>} />
