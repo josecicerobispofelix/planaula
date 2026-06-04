@@ -43,7 +43,7 @@ const depoimentos = [
     nome: 'Camila Rodrigues',
     cargo: 'Professora de Português · 8 anos de experiência',
     texto: 'Antes eu gastava quase 2 horas preparando um plano de aula. Com o PlanAula faço em 30 segundos e ainda fica no padrão BNCC. Simplesmente incrível!',
-    foto: 'https://randomuser.me/api/portraits/women/44.jpg',
+    foto: 'https://randomuser.me/api/portraits/women/25.jpg',
     estrelas: 5,
   },
   {
@@ -82,6 +82,98 @@ const depoimentos = [
     estrelas: 5,
   },
 ]
+
+const PLANOS = [
+  { id: 'gratis',  label: 'Grátis',  limite: 5,   preco: 0,  destaque: false },
+  { id: 'starter', label: 'Starter', limite: 30,  preco: 19, destaque: false },
+  { id: 'pro',     label: 'Pro',     limite: 100, preco: 39, destaque: true  },
+  { id: 'escola',  label: 'Escola',  limite: 500, preco: 89, destaque: false },
+]
+
+function getPlanoRecomendado(qtd: number) {
+  if (qtd <= 5)   return PLANOS[0]
+  if (qtd <= 30)  return PLANOS[1]
+  if (qtd <= 100) return PLANOS[2]
+  return PLANOS[3]
+}
+
+function PricingCalculator() {
+  const [qtd, setQtd] = useState(20)
+  const plano = getPlanoRecomendado(qtd)
+  const custoPorPlano = 0.006 // R$
+  const custoAPI = (qtd * custoPorPlano).toFixed(2)
+  const lucro = plano.preco > 0 ? (plano.preco - qtd * custoPorPlano).toFixed(2) : null
+
+  return (
+    <div style={{ maxWidth: '700px', margin: '0 auto' }}>
+      <div className="card" style={{ padding: '2rem', border: '1px solid rgba(255,77,0,0.3)', background: 'rgba(255,77,0,0.04)' }}>
+        <h3 style={{ fontWeight: 700, marginBottom: '0.5rem', textAlign: 'center' }}>
+          Quantos planos você precisa por mês?
+        </h3>
+        <p style={{ color: 'var(--muted)', textAlign: 'center', fontSize: '0.9rem', marginBottom: '1.75rem' }}>
+          Arraste o slider e veja o plano ideal para você
+        </p>
+
+        <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--muted)' }}>
+          <span>5 planos</span><span>500 planos</span>
+        </div>
+        <input
+          type="range" min={5} max={500} step={5} value={qtd}
+          onChange={e => setQtd(Number(e.target.value))}
+          style={{ width: '100%', accentColor: 'var(--primary)', marginBottom: '1.5rem', height: '6px', cursor: 'pointer' }}
+        />
+        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+          <span style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--primary)' }}>{qtd}</span>
+          <span style={{ color: 'var(--muted)', marginLeft: '0.5rem' }}>planos/mês</span>
+        </div>
+
+        {/* Resultado */}
+        <div style={{
+          background: 'var(--bg)', border: `2px solid ${plano.destaque ? 'var(--primary)' : 'var(--border)'}`,
+          borderRadius: '12px', padding: '1.5rem', textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--muted)', marginBottom: '0.25rem' }}>
+            Plano recomendado
+          </div>
+          <div style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.25rem' }}>
+            {plano.label}
+          </div>
+          <div style={{ fontSize: '2.25rem', fontWeight: 800, color: 'var(--primary)', marginBottom: '0.5rem' }}>
+            {plano.preco === 0 ? 'Grátis' : `R$${plano.preco}/mês`}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--muted)', marginBottom: '1.25rem' }}>
+            <span>até <strong style={{ color: 'var(--text)' }}>{plano.limite} planos/mês</strong></span>
+            <span>custo API: <strong style={{ color: 'var(--text)' }}>R${custoAPI}</strong></span>
+            {lucro && <span>sua margem: <strong style={{ color: '#22c55e' }}>R${lucro}</strong></span>}
+          </div>
+          <Link to="/register" style={{ display: 'block' }}>
+            <button className="btn-primary" style={{ width: '100%' }}>
+              {plano.preco === 0 ? 'Começar grátis' : `Assinar ${plano.label} — R$${plano.preco}/mês`}
+            </button>
+          </Link>
+        </div>
+      </div>
+
+      {/* Tabela comparativa */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginTop: '1.5rem' }}>
+        {PLANOS.map(p => (
+          <div key={p.id} className="card" style={{
+            padding: '1.25rem', textAlign: 'center',
+            border: p.id === plano.id ? '2px solid var(--primary)' : '1px solid var(--border)',
+            background: p.id === plano.id ? 'rgba(255,77,0,0.05)' : 'var(--card)',
+            transition: 'all 0.2s'
+          }}>
+            <div style={{ fontWeight: 700, marginBottom: '0.25rem', fontSize: '0.95rem' }}>{p.label}</div>
+            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)', marginBottom: '0.25rem' }}>
+              {p.preco === 0 ? 'Grátis' : `R$${p.preco}`}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{p.limite} planos/mês</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function Stars({ n }: { n: number }) {
   return (
@@ -227,50 +319,15 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Preços */}
-      <section style={{ maxWidth: '700px', margin: '0 auto', padding: '4rem 2rem' }}>
-        <h2 style={{ textAlign: 'center', fontSize: '1.75rem', fontWeight: 700, marginBottom: '3rem' }}>
-          Planos simples e transparentes
-        </h2>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-          <div className="card" style={{ padding: '2rem' }}>
-            <div style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '0.5rem' }}>Grátis</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1.5rem' }}>
-              R$0<span style={{ fontSize: '1rem', color: 'var(--muted)', fontWeight: 400 }}>/mês</span>
-            </div>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              {['5 planos por mês', 'Cópia de texto', 'Padrão BNCC'].map(f => (
-                <li key={f} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted)', fontSize: '0.95rem' }}>
-                  <span style={{ color: 'var(--primary)' }}>✓</span> {f}
-                </li>
-              ))}
-            </ul>
-            <Link to="/register" style={{ display: 'block' }}>
-              <button className="btn-secondary" style={{ width: '100%' }}>Começar grátis</button>
-            </Link>
-          </div>
-          <div className="card" style={{ padding: '2rem', border: '2px solid var(--primary)', position: 'relative' }}>
-            <div style={{
-              position: 'absolute', top: '-12px', right: '1.5rem',
-              background: 'var(--primary)', color: '#fff', fontSize: '0.75rem',
-              fontWeight: 700, padding: '0.2rem 0.75rem', borderRadius: '999px'
-            }}>POPULAR</div>
-            <div style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '0.5rem' }}>Pro</div>
-            <div style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1.5rem' }}>
-              R$29<span style={{ fontSize: '1rem', color: 'var(--muted)', fontWeight: 400 }}>/mês</span>
-            </div>
-            <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              {['Planos ilimitados', 'Exportar em PDF', 'Histórico completo', 'Suporte prioritário'].map(f => (
-                <li key={f} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem' }}>
-                  <span style={{ color: 'var(--primary)' }}>✓</span> {f}
-                </li>
-              ))}
-            </ul>
-            <Link to="/register" style={{ display: 'block' }}>
-              <button className="btn-primary" style={{ width: '100%' }}>Assinar Pro</button>
-            </Link>
-          </div>
+      {/* Preços com calculadora */}
+      <section style={{ maxWidth: '800px', margin: '0 auto', padding: '4rem 2rem' }}>
+        <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.5rem' }}>
+            Preço justo para cada professor
+          </h2>
+          <p style={{ color: 'var(--muted)' }}>Pague só pelo que usar. Sem surpresas.</p>
         </div>
+        <PricingCalculator />
       </section>
 
       {/* CTA final */}
