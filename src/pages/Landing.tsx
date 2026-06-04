@@ -1,35 +1,41 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
 
-function useCounter(target: number, duration = 2000) {
-  const [count, setCount] = useState(0)
+function useCounters(targets: [number, number, number], duration = 2200) {
+  const [v0, setV0] = useState(0)
+  const [v1, setV1] = useState(0)
+  const [v2, setV2] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
   const started = useRef(false)
 
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !started.current) {
-          started.current = true
-          const start = Date.now()
-          const tick = () => {
-            const elapsed = Date.now() - start
-            const progress = Math.min(elapsed / duration, 1)
-            const ease = 1 - Math.pow(1 - progress, 3)
-            setCount(Math.floor(ease * target))
-            if (progress < 1) requestAnimationFrame(tick)
-            else setCount(target)
-          }
-          requestAnimationFrame(tick)
-        }
-      },
-      { threshold: 0.3 }
-    )
+    function animate(target: number, setter: (n: number) => void) {
+      const start = Date.now()
+      const tick = () => {
+        const elapsed = Date.now() - start
+        const progress = Math.min(elapsed / duration, 1)
+        const ease = 1 - Math.pow(1 - progress, 3)
+        setter(Math.floor(ease * target))
+        if (progress < 1) requestAnimationFrame(tick)
+        else setter(target)
+      }
+      requestAnimationFrame(tick)
+    }
+
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !started.current) {
+        started.current = true
+        animate(targets[0], setV0)
+        animate(targets[1], setV1)
+        animate(targets[2], setV2)
+      }
+    }, { threshold: 0.2 })
+
     if (ref.current) observer.observe(ref.current)
     return () => observer.disconnect()
-  }, [target, duration])
+  }, [])
 
-  return { count, ref }
+  return { values: [v0, v1, v2] as const, ref }
 }
 
 const depoimentos = [
@@ -88,9 +94,7 @@ function Stars({ n }: { n: number }) {
 }
 
 export default function Landing() {
-  const professores = useCounter(3847)
-  const planosGerados = useCounter(28450)
-  const satisfacao = useCounter(98)
+  const { values, ref: countRef } = useCounters([3847, 28450, 98] as [number, number, number])
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)', color: 'var(--text)' }}>
@@ -141,22 +145,22 @@ export default function Landing() {
 
       {/* Contador de usuários */}
       <section style={{ background: 'rgba(255,77,0,0.05)', borderTop: '1px solid rgba(255,77,0,0.1)', borderBottom: '1px solid rgba(255,77,0,0.1)', padding: '3rem 2rem' }}>
-        <div ref={professores.ref} style={{ maxWidth: '900px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', textAlign: 'center' }}>
+        <div ref={countRef} style={{ maxWidth: '900px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', textAlign: 'center' }}>
           <div>
             <div style={{ fontSize: 'clamp(2rem, 4vw, 2.75rem)', fontWeight: 800, color: 'var(--primary)' }}>
-              {professores.count.toLocaleString('pt-BR')}+
+              {values[0].toLocaleString('pt-BR')}+
             </div>
             <div style={{ color: 'var(--muted)', fontSize: '0.95rem', marginTop: '0.25rem' }}>professores usando</div>
           </div>
           <div>
             <div style={{ fontSize: 'clamp(2rem, 4vw, 2.75rem)', fontWeight: 800, color: 'var(--primary)' }}>
-              {planosGerados.count.toLocaleString('pt-BR')}+
+              {values[1].toLocaleString('pt-BR')}+
             </div>
             <div style={{ color: 'var(--muted)', fontSize: '0.95rem', marginTop: '0.25rem' }}>planos gerados</div>
           </div>
           <div>
             <div style={{ fontSize: 'clamp(2rem, 4vw, 2.75rem)', fontWeight: 800, color: 'var(--primary)' }}>
-              {satisfacao.count}%
+              {values[2]}%
             </div>
             <div style={{ color: 'var(--muted)', fontSize: '0.95rem', marginTop: '0.25rem' }}>de satisfação</div>
           </div>
