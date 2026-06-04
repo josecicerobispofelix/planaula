@@ -67,35 +67,80 @@ function getBNCC(serie: string): string {
   return BNCC_REFERENCIAS[serie] || `Série: ${serie}\nGaranta conformidade com a BNCC oficial para esta série.`;
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+// Validar se a resposta contém referências corretas a habilidades BNCC
+function validarBNCCNaResposta(serie: string, conteudo: string): { valido: boolean; erros: string[] } {
+  const erros: string[] = [];
+
+  // Verificar se contém pelo menos uma referência a BNCC
+  const temBNCC = /habilidad|BNCC|EF\d{2}|competência/i.test(conteudo);
+  if (!temBNCC) {
+    erros.push('Resposta não menciona habilidades BNCC');
   }
 
-  try {
-    const { disciplina, serie, tema, duracao, recursos } = await req.json()
-
-    const openaiKey = Deno.env.get('OPENAI_API_KEY')
-    if (!openaiKey) {
-      return new Response(JSON.stringify({ error: 'OPENAI_API_KEY não configurada' }), {
-        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+  // Verificar se contém seções esperadas
+  const secoes = ['objetivo', 'conteúdo', 'metodologia', 'avaliação', 'recursos'];
+  secoes.forEach(secao => {
+    if (!conteudo.toLowerCase().includes(secao)) {
+      erros.push(`Falta seção: ${secao}`);
     }
+  });
 
-    const bnccContext = getBNCC(serie)
+  // Validar que não contém referências a séries incorretas
+  const serieNum = extrairNumeroSerie(serie);
+  if (serieNum) {
+    const anosIncorretos = procurarReferenciasSeries(conteudo);
+    const temReferenciasIncorretas = anosIncorretos.some(ano => ano !== serieNum);
+    if (temReferenciasIncorretas) {
+      erros.push('Contém referências a séries incorretas');
+    }
+  }
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `Você é um especialista em educação brasileira com profundo conhecimento da BNCC (Base Nacional Comum Curricular).
+  return {
+    valido: erros.length === 0,
+    erros
+  };
+}
+
+function extrairNumeroSerie(serie: string): number | null {
+  const match = serie.match(/(\d+)/);
+  return match ? parseInt(match[1]) : null;
+}
+
+function procurarReferenciasSeries(texto: string): number[] {
+  const matches = texto.match(/(\d)º\s*ano|série\s*(\d)|ano\s*(\d)/gi) || [];
+  const numeros = new Set<number>();
+  matches.forEach(match => {
+    const num = match.match(/\d/);
+    if (num) numeros.add(parseInt(num[0]));
+  });
+  return Array.from(numeros);
+}
+
+async function gerarPlanoComValidacao(
+  disciplina: string,
+  serie: string,
+  tema: string,
+  duracao: string,
+  recursos: string,
+  openaiKey: string,
+  tentativa: number = 1
+): Promise<{ plano: string; validado: boolean; tentativas: number }> {
+  const maxTentativas = 3;
+
+  const bnccContext = getBNCC(serie);
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${openaiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `Você é um especialista em educação brasileira com profundo conhecimento da BNCC (Base Nacional Comum Curricular).
 
 IMPORTANTE: Você DEVE garantir 100% de conformidade com a BNCC para a série/ano informado. Não improvise habilidades BNCC.
 
@@ -107,10 +152,10 @@ Ao gerar planos de aula:
 5. Estruture de forma clara e prática
 
 Gere em português do Brasil, com linguagem clara e didática.`
-          },
-          {
-            role: 'user',
-            content: `${bnccContext}
+        },
+        {
+          role: 'user',
+          content: `${bnccContext}
 
 Disciplina: ${disciplina}
 Série: ${serie}
@@ -150,24 +195,76 @@ Crie um PLANO DE AULA COMPLETO com as seguintes seções:
 
 ## Reflexões Finais
 [Considerações sobre o aprendizado esperado]`
-          }
-        ],
-        max_tokens: 2000,
-        temperature: 0.5,
-      })
+        }
+      ],
+      max_tokens: 2000,
+      temperature: 0.5,
     })
+  });
 
-    if (!response.ok) {
-      const err = await response.text()
-      return new Response(JSON.stringify({ error: `Erro OpenAI: ${err}` }), {
-        status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Erro OpenAI: ${err}`);
+  }
+
+  const data = await response.json();
+  const plano = data.choices?.[0]?.message?.content || '';
+
+  // Validar conformidade BNCC
+  const validacao = validarBNCCNaResposta(serie, plano);
+
+  if (validacao.valido) {
+    return { plano, validado: true, tentativas: tentativa };
+  }
+
+  // Se falhou na validação e ainda tem tentativas, tenta novamente
+  if (tentativa < maxTentativas) {
+    console.log(`[BNCC] Validação falhou na tentativa ${tentativa}. Motivos: ${validacao.erros.join(', ')}. Regenerando...`);
+    return gerarPlanoComValidacao(
+      disciplina,
+      serie,
+      tema,
+      duracao,
+      recursos,
+      openaiKey,
+      tentativa + 1
+    );
+  }
+
+  // Esgotou tentativas mas retorna mesmo assim
+  console.warn(`[BNCC] Esgotadas ${maxTentativas} tentativas. Retornando plano mesmo com validação falha.`);
+  return { plano, validado: false, tentativas: tentativa };
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const { disciplina, serie, tema, duracao, recursos } = await req.json()
+
+    const openaiKey = Deno.env.get('OPENAI_API_KEY')
+    if (!openaiKey) {
+      return new Response(JSON.stringify({ error: 'OPENAI_API_KEY não configurada' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
 
-    const data = await response.json()
-    const plano = data.choices?.[0]?.message?.content || ''
+    const resultado = await gerarPlanoComValidacao(
+      disciplina,
+      serie,
+      tema,
+      duracao,
+      recursos,
+      openaiKey
+    );
 
-    return new Response(JSON.stringify({ plano }), {
+    return new Response(JSON.stringify({
+      plano: resultado.plano,
+      validado: resultado.validado,
+      tentativas: resultado.tentativas
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   } catch (err) {
