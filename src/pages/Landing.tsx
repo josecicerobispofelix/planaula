@@ -352,7 +352,7 @@ export default function Landing() {
         <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
           <a href="#" style={{ transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}>Termos de uso</a>
           <a href="#" style={{ transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}>Política de privacidade</a>
-          <a href="mailto:contato@planaula.com.br" style={{ transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}>Contato</a>
+          <a href="mailto:contato@planaula.appsrapidos.com.br" style={{ transition: 'color 0.2s' }} onMouseEnter={e => (e.currentTarget.style.color = 'var(--primary)')} onMouseLeave={e => (e.currentTarget.style.color = 'var(--muted)')}>Contato</a>
         </div>
         <p>© 2026 PlanAula. Todos os direitos reservados.</p>
       </footer>
